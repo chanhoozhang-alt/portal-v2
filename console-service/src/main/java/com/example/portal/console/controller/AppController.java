@@ -4,6 +4,7 @@ import com.example.portal.common.model.common.PageResult;
 import com.example.portal.common.model.common.Result;
 import com.example.portal.common.model.dto.common.StatusRequest;
 import com.example.portal.common.model.dto.console.AppSaveRequest;
+import com.example.portal.common.model.dto.console.AppVO;
 import com.example.portal.common.model.enums.CommonConstant;
 import com.example.portal.common.model.entity.AppInfo;
 import com.example.portal.common.security.PermissionChecker;
@@ -12,7 +13,9 @@ import com.example.portal.console.service.AppService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 应用管理接口，提供应用的增删改查、启用/停用和密钥重置功能。
@@ -28,23 +31,24 @@ public class AppController {
      * 分页查询应用列表，非系统管理员按数据范围过滤。
      */
     @GetMapping
-    public Result<PageResult<AppInfo>> list(
+    public Result<PageResult<AppVO>> list(
             @RequestParam(required = false) String appCode,
             @RequestParam(required = false) String appName,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         PageResult<AppInfo> result = appService.list(appCode, appName, status, pageNum, pageSize);
-        return Result.success(result);
+        List<AppVO> voList = result.getList().stream().map(AppVO::from).collect(Collectors.toList());
+        return Result.success(new PageResult<>(result.getTotal(), voList));
     }
 
     /**
      * 根据 appCode 查询应用详情。
      */
     @GetMapping("/{appCode}")
-    public Result<AppInfo> get(@PathVariable String appCode) {
+    public Result<AppVO> get(@PathVariable String appCode) {
         PermissionChecker.requireAppAdmin(appCode);
-        return Result.success(appService.getByAppCode(appCode));
+        return Result.success(AppVO.from(appService.getByAppCode(appCode)));
     }
 
     @PostMapping("/save")
