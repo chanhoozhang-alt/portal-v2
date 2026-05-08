@@ -19,6 +19,10 @@ public interface RoleUserService {
 
     void enableUser(String appCode, String roleCode, String userId);
 
+    void batchEnableUsers(String appCode, String roleCode, List<String> userIds);
+
+    void batchDisableUsers(String appCode, String roleCode, List<String> userIds);
+
     void batchRemoveUsers(String appCode, String roleCode, List<String> userIds);
 
     List<Map<String, Object>> listBizManageRoles();

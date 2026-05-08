@@ -2,11 +2,11 @@ package com.example.portal.console.controller;
 
 import com.example.portal.common.model.common.Result;
 import com.example.portal.common.model.dto.common.StatusRequest;
+import com.example.portal.common.model.dto.console.AppGroupVO;
 import com.example.portal.common.model.dto.console.GroupAppRequest;
 import com.example.portal.common.model.enums.CommonConstant;
 import com.example.portal.common.model.dto.console.GroupSaveRequest;
 import com.example.portal.common.model.dto.console.GroupSortRequest;
-import com.example.portal.common.model.entity.AppGroup;
 import com.example.portal.common.security.PermissionChecker;
 import com.example.portal.console.aspect.OperationLog;
 import com.example.portal.console.service.AppGroupService;
@@ -29,7 +29,7 @@ public class AppGroupController {
      * 查询所有应用分组列表。
      */
     @GetMapping
-    public Result<List<AppGroup>> list() {
+    public Result<List<AppGroupVO>> list() {
         PermissionChecker.requireSystemAdmin();
         return Result.success(appGroupService.list());
     }

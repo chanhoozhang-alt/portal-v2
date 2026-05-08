@@ -97,6 +97,8 @@ public class PortalServiceImpl implements PortalService {
                     PortalInitResponse.AppItem item = new PortalInitResponse.AppItem();
                     item.setAppCode(a.getAppCode());
                     item.setAppName(a.getAppName());
+                    item.setAppIcon(a.getAppIcon());
+                    item.setAppDesc(a.getAppDesc());
                     item.setJumpUrl(a.getJumpUrl());
                     item.setShowMenu(a.getShowMenu());
                     item.setShowHeader(a.getShowHeader());

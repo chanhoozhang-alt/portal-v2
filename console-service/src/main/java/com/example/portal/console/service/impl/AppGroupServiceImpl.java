@@ -4,18 +4,24 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.portal.common.cache.PermissionCacheManager;
 import com.example.portal.common.exception.BusinessException;
 import com.example.portal.common.model.enums.CommonConstant;
+import com.example.portal.common.model.dto.console.AppGroupVO;
 import com.example.portal.common.model.dto.console.GroupSaveRequest;
 import com.example.portal.common.model.dto.console.GroupSortRequest;
 import com.example.portal.common.model.entity.AppGroup;
 import com.example.portal.common.model.entity.AppGroupRelation;
+import com.example.portal.common.model.entity.AppInfo;
 import com.example.portal.console.mapper.AppGroupMapper;
 import com.example.portal.console.mapper.AppGroupRelationMapper;
+import com.example.portal.console.mapper.AppInfoMapper;
 import com.example.portal.console.service.AppGroupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 应用分组服务实现，管理分组增删改查、应用绑定/解绑/排序及缓存清理。
@@ -26,25 +32,62 @@ public class AppGroupServiceImpl implements AppGroupService {
 
     private final AppGroupMapper appGroupMapper;
     private final AppGroupRelationMapper appGroupRelationMapper;
+    private final AppInfoMapper appInfoMapper;
     private final PermissionCacheManager cacheManager;
 
     @Override
-    public List<AppGroup> list() {
+    public List<AppGroupVO> list() {
         List<AppGroup> groups = appGroupMapper.selectList(
                 new LambdaQueryWrapper<AppGroup>()
                         .eq(AppGroup::getStatus, CommonConstant.STATUS_ENABLED)
                         .orderByAsc(AppGroup::getSortNo));
 
-        // 查询每个分组下的应用关系
-        for (AppGroup group : groups) {
-            List<AppGroupRelation> relations = appGroupRelationMapper.selectList(
+        // 批量查询所有启用分组的应用关联关系
+        List<String> groupCodes = groups.stream()
+                .map(AppGroup::getGroupCode).collect(Collectors.toList());
+        Map<String, List<AppGroupRelation>> relationMap = Map.of();
+        if (!groupCodes.isEmpty()) {
+            List<AppGroupRelation> allRelations = appGroupRelationMapper.selectList(
                     new LambdaQueryWrapper<AppGroupRelation>()
-                            .eq(AppGroupRelation::getGroupCode, group.getGroupCode())
+                            .in(AppGroupRelation::getGroupCode, groupCodes)
                             .orderByAsc(AppGroupRelation::getSortNo));
-            // 将关系数据暂存到 ext 字段不合适，这里只返回分组列表
-            // 调用方可通过 groupCode 再查关联关系
+            relationMap = allRelations.stream()
+                    .collect(Collectors.groupingBy(AppGroupRelation::getGroupCode));
         }
-        return groups;
+
+        // 批量查询关联应用的信息
+        List<String> allAppCodes = relationMap.values().stream()
+                .flatMap(List::stream)
+                .map(AppGroupRelation::getAppCode)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, AppInfo> appInfoMap = Map.of();
+        if (!allAppCodes.isEmpty()) {
+            List<AppInfo> appInfos = appInfoMapper.selectList(
+                    new LambdaQueryWrapper<AppInfo>()
+                            .in(AppInfo::getAppCode, allAppCodes));
+            appInfoMap = appInfos.stream()
+                    .collect(Collectors.toMap(AppInfo::getAppCode, a -> a, (a, b) -> a));
+        }
+
+        // 组装 VO
+        List<AppGroupVO> result = new ArrayList<>();
+        Map<String, List<AppGroupRelation>> finalRelationMap = relationMap;
+        Map<String, AppInfo> finalAppInfoMap = appInfoMap;
+        for (AppGroup group : groups) {
+            AppGroupVO vo = AppGroupVO.from(group);
+            List<AppGroupRelation> relations = finalRelationMap.getOrDefault(group.getGroupCode(), new ArrayList<>());
+            for (AppGroupRelation rel : relations) {
+                AppInfo appInfo = finalAppInfoMap.get(rel.getAppCode());
+                AppGroupVO.GroupAppItem item = new AppGroupVO.GroupAppItem();
+                item.setAppCode(rel.getAppCode());
+                item.setAppName(appInfo != null ? appInfo.getAppName() : null);
+                item.setSortNo(rel.getSortNo());
+                vo.getApps().add(item);
+            }
+            result.add(vo);
+        }
+        return result;
     }
 
     @Override

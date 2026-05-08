@@ -62,9 +62,9 @@ public class RoleUserController {
             @RequestBody RoleUserRequest request) {
         PermissionChecker.requireBizAdmin(appCode);
         if (CommonConstant.STATUS_ENABLED.equals(request.getStatus())) {
-            roleUserService.enableUser(appCode, request.getRoleCode(), request.getUserIds().get(0));
+            roleUserService.batchEnableUsers(appCode, request.getRoleCode(), request.getUserIds());
         } else {
-            roleUserService.disableUser(appCode, request.getRoleCode(), request.getUserIds().get(0));
+            roleUserService.batchDisableUsers(appCode, request.getRoleCode(), request.getUserIds());
         }
         return Result.success();
     }

@@ -118,6 +118,40 @@ public class RoleUserServiceImpl implements RoleUserService {
     }
 
     @Override
+    public void batchEnableUsers(String appCode, String roleCode, List<String> userIds) {
+        UserContext ctx = UserContext.get();
+        List<UserRole> roles = userRoleMapper.selectList(
+                new LambdaQueryWrapper<UserRole>()
+                        .eq(UserRole::getAppCode, appCode)
+                        .eq(UserRole::getRoleCode, roleCode)
+                        .in(UserRole::getUserId, userIds));
+        for (UserRole ur : roles) {
+            ur.setStatus(CommonConstant.STATUS_ENABLED);
+            userRoleMapper.updateById(ur);
+        }
+        cacheManager.evictUsers(userIds);
+    }
+
+    @Override
+    public void batchDisableUsers(String appCode, String roleCode, List<String> userIds) {
+        UserContext ctx = UserContext.get();
+        List<UserRole> roles = userRoleMapper.selectList(
+                new LambdaQueryWrapper<UserRole>()
+                        .eq(UserRole::getAppCode, appCode)
+                        .eq(UserRole::getRoleCode, roleCode)
+                        .in(UserRole::getUserId, userIds));
+        Date now = new Date();
+        for (UserRole ur : roles) {
+            ur.setStatus(CommonConstant.STATUS_DISABLED);
+            ur.setRevokeBy(ctx.getUserId());
+            ur.setRevokeName(ctx.getUserName());
+            ur.setRevokeTime(now);
+            userRoleMapper.updateById(ur);
+        }
+        cacheManager.evictUsers(userIds);
+    }
+
+    @Override
     public void batchRemoveUsers(String appCode, String roleCode, List<String> userIds) {
         LambdaQueryWrapper<UserRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserRole::getAppCode, appCode)

@@ -1,8 +1,8 @@
 package com.example.portal.console.service;
 
+import com.example.portal.common.model.dto.console.AppGroupVO;
 import com.example.portal.common.model.dto.console.GroupSaveRequest;
 import com.example.portal.common.model.dto.console.GroupSortRequest;
-import com.example.portal.common.model.entity.AppGroup;
 
 import java.util.List;
 
@@ -11,7 +11,7 @@ import java.util.List;
  */
 public interface AppGroupService {
 
-    List<AppGroup> list();
+    List<AppGroupVO> list();
 
     void add(GroupSaveRequest request);
 
