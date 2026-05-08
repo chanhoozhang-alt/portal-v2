@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.portal.server.mapper.AppInfoMapper">
+
+    <select id="selectVisibleApps" resultType="com.example.portal.common.model.entity.AppInfo">
+        SELECT
+            a.id, a.app_code, a.app_name, a.app_icon, a.app_desc, a.app_url,
+            a.visible_type, a.status, a.sort_no,
+            a.show_menu, a.show_header, a.enable_watermark,
+            a.client_id, a.client_secret,
+            a.org_id, a.org_name,
+            a.create_by, a.create_name, a.create_time,
+            a.update_by, a.update_name, a.update_time,
+            g.group_code, g.group_name, g.sort_no AS group_sort_no,
+            r.sort_no AS app_sort_no
+        FROM app_info a
+        LEFT JOIN app_group_relation r ON r.app_code = a.app_code
+        LEFT JOIN app_group g ON g.group_code = r.group_code AND g.status = 'ENABLED'
+        WHERE a.status = 'ENABLED'
+          AND (
+            a.visible_type = 'ALL'
+            OR EXISTS (
+                SELECT 1 FROM user_role ur
+                WHERE ur.app_code = a.app_code AND ur.user_id = #{userId} AND ur.status = 'ENABLED'
+            )
+            OR EXISTS (
+                SELECT 1 FROM app_admin aa
+                WHERE aa.app_code = a.app_code AND aa.user_id = #{userId} AND aa.status = 'ENABLED'
+            )
+            OR EXISTS (
+                SELECT 1 FROM biz_admin ba
+                WHERE ba.app_code = a.app_code AND ba.user_id = #{userId} AND ba.status = 'ENABLED'
+            )
+          )
+        ORDER BY g.sort_no ASC, r.sort_no ASC
+    </select>
+
+</mapper>

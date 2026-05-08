@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.portal.server.mapper.UserRoleMapper">
+
+    <select id="selectByAppAndUser" resultType="com.example.portal.common.model.entity.UserRole">
+        SELECT ur.*, cr.role_name
+        FROM user_role ur
+        LEFT JOIN app_custom_role cr ON cr.app_code = ur.app_code AND cr.role_code = ur.role_code
+        WHERE ur.app_code = #{appCode}
+          AND ur.user_id = #{userId}
+          AND ur.status = 'ENABLED'
+    </select>
+
+    <select id="countEnabledByAppAndUser" resultType="int">
+        SELECT COUNT(1)
+        FROM user_role
+        WHERE app_code = #{appCode}
+          AND user_id = #{userId}
+          AND status = 'ENABLED'
+    </select>
+
+</mapper>

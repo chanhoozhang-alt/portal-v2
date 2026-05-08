@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: console-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:localhost:8848}
