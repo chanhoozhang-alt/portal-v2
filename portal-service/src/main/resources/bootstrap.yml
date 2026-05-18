@@ -1,7 +1,9 @@
 spring:
   application:
+    # 注册到 Nacos 的服务名，Feign 通过该名称发现 portal-service。
     name: portal-service
   cloud:
     nacos:
       discovery:
+        # Nacos 注册中心地址。
         server-addr: ${NACOS_ADDR:localhost:8848}

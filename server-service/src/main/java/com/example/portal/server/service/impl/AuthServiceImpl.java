@@ -49,9 +49,9 @@ public class AuthServiceImpl implements AuthService {
     private final PermissionCacheManager cacheManager;
 
     @Override
-    public AuthInitResponse init(String token) {
+    public AuthInitResponse init(String token, String idToken) {
         // 第 1 步：外部身份平台校验 Token，获取用户基础信息
-        IdentityPlatformClient.IdentityInfo identity = identityPlatformClient.verifyToken(token);
+        IdentityPlatformClient.IdentityInfo identity = identityPlatformClient.verifyToken(token, idToken);
         if (identity == null) {
             throw new UnauthorizedException("Token验证失败");
         }

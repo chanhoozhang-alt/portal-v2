@@ -1,27 +1,41 @@
 server:
+  # console-service HTTP 端口，后台管理接口默认访问 8082。
   port: 8082
 
 spring:
   redis:
+    # Redis 主机地址，用于读取登录态和权限缓存。
     host: ${REDIS_HOST:localhost}
+    # Redis 端口。
     port: ${REDIS_PORT:6379}
+    # Redis 密码；本地无密码时留空。
     password: ${REDIS_PASSWORD:}
+    # Redis 数据库编号，需与 portal/server 保持一致。
     database: 0
   datasource:
+    # MySQL 连接地址，保存应用、管理员、角色和人员配置。
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:portal_v2}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    # MySQL 用户名。
     username: ${MYSQL_USER:root}
+    # MySQL 密码；本地可留空。
     password: ${MYSQL_PASSWORD:}
+    # MySQL JDBC 驱动类。
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 mybatis-plus:
+  # MyBatis XML mapper 文件位置。
   mapper-locations: classpath:mapper/*.xml
   configuration:
+    # 数据库下划线字段自动映射为 Java 驼峰字段。
     map-underscore-to-camel-case: true
+    # SQL 日志实现；联调阶段打印 SQL，生产可关闭或调整。
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 logging:
   level:
+    # 项目包日志级别；联调阶段使用 debug，生产可调整为 info。
     com.example.portal: debug
 
 portal:
+  # 内部服务调用密钥；console 调 server-service /internal/** 时通过 X-Internal-Token 携带。
   internal-token: ${INTERNAL_TOKEN:portal-internal-secret-2026}

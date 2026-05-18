@@ -10,6 +10,7 @@ public class PortalSession {
     private String userId;
     private String accessToken;
     private String refreshToken;
+    private String idToken;
     private Long accessTokenExpireAt;
     private Long createdAt;
     private Long lastRefreshAt;

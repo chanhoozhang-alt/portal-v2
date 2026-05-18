@@ -1,29 +1,51 @@
 server:
+  # server-service HTTP 端口，内部认证接口和开放接口默认访问 8083。
   port: 8083
 
 spring:
   redis:
+    # Redis 主机地址，用于写入 token、identity、visibleApps 等认证缓存。
     host: ${REDIS_HOST:localhost}
+    # Redis 端口。
     port: ${REDIS_PORT:6379}
+    # Redis 密码；本地无密码时留空。
     password: ${REDIS_PASSWORD:}
+    # Redis 数据库编号，需与 portal/console 保持一致。
     database: 0
   datasource:
+    # MySQL 连接地址，server-service 读取应用和权限配置。
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:portal_v2}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    # MySQL 用户名。
     username: ${MYSQL_USER:root}
+    # MySQL 密码；本地可留空。
     password: ${MYSQL_PASSWORD:}
+    # MySQL JDBC 驱动类。
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 mybatis-plus:
+  # MyBatis XML mapper 文件位置。
   mapper-locations: classpath:mapper/*.xml
   configuration:
+    # 数据库下划线字段自动映射为 Java 驼峰字段。
     map-underscore-to-camel-case: true
+    # SQL 日志实现；联调阶段打印 SQL，生产可关闭或调整。
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 portal:
+  # 内部服务调用密钥；server-service 用它校验 /internal/** 请求中的 X-Internal-Token。
   internal-token: ${INTERNAL_TOKEN:portal-internal-secret-2026}
-  identity-platform:
-    url: ${IDENTITY_PLATFORM_URL:http://localhost:9090/api}
-
+  upstream-auth:
+    # 上游分配给本系统的应用 clientId，用于校验 id_token 是否签发给本应用。
+    client-id: ${UPSTREAM_AUTH_CLIENT_ID:}
+    # 是否强制校验 id_token 签名；接入 SM2/RSA 验签实现和公钥后再设为 true。
+    strict-id-token-verify: ${UPSTREAM_AUTH_STRICT_ID_TOKEN_VERIFY:false}
+    # 认证中心国密公钥，用于 id_token 的 SM2WithSM3 验签。
+    center-public-key: ${UPSTREAM_AUTH_CENTER_PUBLIC_KEY:}
+    # 认证中心 RSA 512 位公钥，用于 id_token 验签。
+    center-rsa-public-key: ${UPSTREAM_AUTH_CENTER_RSA_PUBLIC_KEY:}
+    # 认证中心 RSA 2048 位公钥，用于 id_token 验签。
+    center-rsa2048-public-key: ${UPSTREAM_AUTH_CENTER_RSA2048_PUBLIC_KEY:}
 logging:
   level:
+    # 项目包日志级别；联调阶段使用 debug，生产可调整为 info。
     com.example.portal: debug

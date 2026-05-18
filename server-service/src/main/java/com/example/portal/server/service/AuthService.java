@@ -7,5 +7,5 @@ import com.example.portal.common.model.dto.server.AuthInitResponse;
  */
 public interface AuthService {
 
-    AuthInitResponse init(String token);
+    AuthInitResponse init(String token, String idToken);
 }

@@ -14,5 +14,6 @@ public interface ServerFeignClient {
 
     @PostMapping("/internal/auth/init")
     Result<AuthInitResponse> initAuth(@RequestHeader("X-Internal-Token") String internalToken,
-                                      @RequestHeader("X-User-Token") String token);
+                                      @RequestHeader("X-User-Token") String token,
+                                      @RequestHeader("X-ID-Token") String idToken);
 }

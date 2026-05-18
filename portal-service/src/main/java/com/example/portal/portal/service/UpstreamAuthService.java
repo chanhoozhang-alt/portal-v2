@@ -41,6 +41,7 @@ public class UpstreamAuthService {
     private String internalToken;
 
     public String buildLoginUrl(String redirect) {
+        validateLoginConfig();
         String state = IdUtil.fastSimpleUUID();
         AuthState authState = new AuthState();
         authState.setState(state);
@@ -65,7 +66,7 @@ public class UpstreamAuthService {
         }
         AuthState authState = consumeState(state);
         TokenResult token = exchangeTokenByCode(code);
-        AuthInitResponse authInfo = initAuth(token.getAccessToken());
+        AuthInitResponse authInfo = initAuth(token);
         PortalSession session = createSession(authInfo.getUserId(), token);
         cacheManager.setSession(session.getSessionId(), session, token.getExpiresIn());
         addSessionCookie(response, session.getSessionId(), token.getExpiresIn());
@@ -74,11 +75,12 @@ public class UpstreamAuthService {
 
     public PortalSession refreshSession(String sessionId, PortalSession session, HttpServletResponse response) {
         TokenResult token = refreshToken(session.getRefreshToken());
-        AuthInitResponse authInfo = initAuth(token.getAccessToken());
+        AuthInitResponse authInfo = initAuth(token);
 
         session.setUserId(authInfo.getUserId());
         session.setAccessToken(token.getAccessToken());
         session.setRefreshToken(StrUtil.blankToDefault(token.getRefreshToken(), session.getRefreshToken()));
+        session.setIdToken(StrUtil.blankToDefault(token.getIdToken(), session.getIdToken()));
         session.setAccessTokenExpireAt(System.currentTimeMillis() + token.getExpiresIn() * 1000);
         session.setLastRefreshAt(System.currentTimeMillis());
 
@@ -143,9 +145,12 @@ public class UpstreamAuthService {
 
     private TokenResult requestToken(Map<String, Object> form) {
         try {
+            if (properties.isSignedTokenRequestEnabled()) {
+                throw new BusinessException("上游 token 接口签名已启用，但当前未接入 ZA21 SignClient/TokenHelper 实现");
+            }
             String body = HttpRequest.post(properties.getTokenUrl())
                     .form(form)
-                    .timeout(10000)
+                    .timeout(properties.getReadTimeoutMillis())
                     .execute()
                     .body();
             JSONObject root = JSONUtil.parseObj(body);
@@ -161,9 +166,16 @@ public class UpstreamAuthService {
             TokenResult result = new TokenResult();
             result.setAccessToken(accessToken);
             result.setRefreshToken(firstStr(tokenObj, "refreshToken", "refresh_token"));
+            result.setIdToken(firstStr(tokenObj, "idToken", "id_token"));
+            if (StrUtil.isBlank(result.getIdToken())) {
+                log.warn("上游token接口未返回id_token: {}", body);
+                throw new UnauthorizedException("上游token接口返回缺少id_token");
+            }
             result.setExpiresIn(firstLong(tokenObj, 10800L, "expiresIn", "expires_in"));
             return result;
         } catch (UnauthorizedException e) {
+            throw e;
+        } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             log.error("调用上游token接口失败", e);
@@ -171,8 +183,8 @@ public class UpstreamAuthService {
         }
     }
 
-    private AuthInitResponse initAuth(String accessToken) {
-        Result<AuthInitResponse> result = serverFeignClient.initAuth(internalToken, accessToken);
+    private AuthInitResponse initAuth(TokenResult token) {
+        Result<AuthInitResponse> result = serverFeignClient.initAuth(internalToken, token.getAccessToken(), token.getIdToken());
         if (result == null || result.getCode() != 200 || result.getData() == null) {
             throw new UnauthorizedException("本系统认证初始化失败");
         }
@@ -186,6 +198,7 @@ public class UpstreamAuthService {
         session.setUserId(userId);
         session.setAccessToken(token.getAccessToken());
         session.setRefreshToken(token.getRefreshToken());
+        session.setIdToken(token.getIdToken());
         session.setAccessTokenExpireAt(now + token.getExpiresIn() * 1000);
         session.setCreatedAt(now);
         session.setLastRefreshAt(now);
@@ -225,6 +238,18 @@ public class UpstreamAuthService {
         return redirect;
     }
 
+    private void validateLoginConfig() {
+        if (StrUtil.isBlank(properties.getClientId())) {
+            throw new BusinessException("缺少上游认证 clientId 配置");
+        }
+        if (StrUtil.isBlank(properties.getRedirectUri())) {
+            throw new BusinessException("缺少上游认证 redirectUri 配置");
+        }
+        if (properties.getRedirectUri().contains("#")) {
+            throw new BusinessException("上游认证 redirectUri 不能包含 #");
+        }
+    }
+
     private String firstStr(JSONObject obj, String... keys) {
         for (String key : keys) {
             String value = obj.getStr(key);
@@ -249,6 +274,7 @@ public class UpstreamAuthService {
     public static class TokenResult {
         private String accessToken;
         private String refreshToken;
+        private String idToken;
         private long expiresIn;
     }
 }

@@ -1,27 +1,68 @@
 server:
+  # portal-service HTTP 端口，前端门户接口默认访问 8081。
   port: 8081
 
 spring:
   redis:
+    # Redis 主机地址，用于保存登录 state、PORTAL_SESSION、权限缓存。
     host: ${REDIS_HOST:localhost}
+    # Redis 端口。
     port: ${REDIS_PORT:6379}
+    # Redis 密码；本地无密码时留空。
     password: ${REDIS_PASSWORD:}
+    # Redis 数据库编号，三个服务需保持一致。
     database: 0
 
 logging:
   level:
+    # 项目包日志级别；联调阶段使用 debug，生产可调整为 info。
     com.example.portal: debug
 
 portal:
+  # 内部服务调用密钥；portal 调 server-service /internal/** 时通过 X-Internal-Token 携带。
   internal-token: ${INTERNAL_TOKEN:portal-internal-secret-2026}
   upstream-auth:
+    # 上游授权登录地址，浏览器 302 跳转到这里获取授权码 code。
     authorize-url: ${UPSTREAM_AUTH_AUTHORIZE_URL:https://one-account-gateway.paasuat.cmbchina.cn/auth-server/auth}
-    token-url: ${UPSTREAM_AUTH_TOKEN_URL:https://one-account-gateway.paasuat.cmbchina.cn/auth-server/token}
+    # 上游 token 接口地址，后端用 code 或 refreshToken 换取 token；UAT 文档要求使用 http。
+    token-url: ${UPSTREAM_AUTH_TOKEN_URL:http://one-account-gateway.paasuat.cmbchina.cn/auth-server/token}
+    # 上游认证中心根地址，接入 ZA21 TokenHelper/SignClient 时使用。
+    center-uri: ${UPSTREAM_AUTH_CENTER_URI:http://one-account-gateway.paasuat.cmbchina.cn/auth-server}
+    # 上游分配给本系统的应用 clientId。
     client-id: ${UPSTREAM_AUTH_CLIENT_ID:}
+    # 上游分配给本系统的 clientSecret；正式签名模式下可能不再依赖。
     client-secret: ${UPSTREAM_AUTH_CLIENT_SECRET:}
+    # 国密算法应用私钥，注册应用公钥对应的私钥，用于 token 接口签名。
+    private-key: ${UPSTREAM_AUTH_PRIVATE_KEY:}
+    # 国密算法应用公钥，和 privateKey 配套。
+    public-key: ${UPSTREAM_AUTH_PUBLIC_KEY:}
+    # 认证中心国密公钥，用于 id_token 的 SM2WithSM3 验签。
+    center-public-key: ${UPSTREAM_AUTH_CENTER_PUBLIC_KEY:}
+    # RSA 算法应用私钥，和 privateKey 二选一。
+    rsa-private-key: ${UPSTREAM_AUTH_RSA_PRIVATE_KEY:}
+    # RSA 算法应用公钥，和 rsaPrivateKey 配套。
+    rsa-public-key: ${UPSTREAM_AUTH_RSA_PUBLIC_KEY:}
+    # 认证中心 RSA 512 位公钥，用于 id_token 验签。
+    center-rsa-public-key: ${UPSTREAM_AUTH_CENTER_RSA_PUBLIC_KEY:}
+    # 认证中心 RSA 2048 位公钥，用于 id_token 验签。
+    center-rsa2048-public-key: ${UPSTREAM_AUTH_CENTER_RSA2048_PUBLIC_KEY:}
+    # 本系统授权回调地址，需要在上游注册白名单，不能包含 #。
     redirect-uri: ${UPSTREAM_AUTH_REDIRECT_URI:http://localhost:8081/api/auth/callback}
+    # 授权范围，默认 default。
     scope: ${UPSTREAM_AUTH_SCOPE:default}
+    # 是否启用 token 接口签名；接入 ZA21/签名实现前保持 false。
+    signed-token-request-enabled: ${UPSTREAM_AUTH_SIGNED_TOKEN_REQUEST_ENABLED:false}
+    # 是否强制校验 id_token 签名；接入验签实现和公钥后再设为 true。
+    strict-id-token-verify: ${UPSTREAM_AUTH_STRICT_ID_TOKEN_VERIFY:false}
+    # 调上游 token 接口的连接超时，单位毫秒。
+    connection-timeout-millis: ${UPSTREAM_AUTH_CONNECTION_TIMEOUT_MILLIS:10000}
+    # 调上游 token 接口的读取超时，单位毫秒。
+    read-timeout-millis: ${UPSTREAM_AUTH_READ_TIMEOUT_MILLIS:60000}
+    # 登录 state 在 Redis 中的有效期，单位秒。
     state-ttl-seconds: ${UPSTREAM_AUTH_STATE_TTL_SECONDS:600}
+    # accessToken 剩余多少秒以内触发 refreshToken 自动续期。
     refresh-before-seconds: ${UPSTREAM_AUTH_REFRESH_BEFORE_SECONDS:600}
+    # PORTAL_SESSION Cookie 是否仅允许 HTTPS 传输；生产建议 true。
     cookie-secure: ${PORTAL_COOKIE_SECURE:false}
+    # 登录成功后默认回跳的本系统前端路径。
     default-redirect: ${PORTAL_DEFAULT_REDIRECT:/}

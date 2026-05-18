@@ -43,10 +43,14 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (token == null || token.isEmpty()) {
             throw new UnauthorizedException("未提供认证Token");
         }
+        String idToken = (String) request.getAttribute("PORTAL_ID_TOKEN");
+        if (idToken == null || idToken.isEmpty()) {
+            throw new UnauthorizedException("未提供认证id_token");
+        }
 
         String userId = cacheManager.getUserIdByToken(token);
         if (userId == null) {
-            AuthInitResult result = fallbackHandler.initAuth(token);
+            AuthInitResult result = fallbackHandler.initAuth(token, idToken);
             if (result == null) {
                 throw new UnauthorizedException("Token验证失败");
             }
@@ -57,7 +61,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         String identityJson = cacheManager.getIdentity(userId);
         if (identityJson == null) {
-            AuthInitResult result = fallbackHandler.initAuth(token);
+            AuthInitResult result = fallbackHandler.initAuth(token, idToken);
             if (result == null) {
                 throw new UnauthorizedException("Token验证失败");
             }
@@ -107,6 +111,9 @@ public class AuthInterceptor implements HandlerInterceptor {
                     return null;
                 }
                 PortalSession session = JsonUtils.toBean(sessionJson, PortalSession.class, true);
+                if (session != null) {
+                    request.setAttribute("PORTAL_ID_TOKEN", session.getIdToken());
+                }
                 return session != null ? session.getAccessToken() : null;
             }
         }
@@ -161,7 +168,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     public interface AuthFallbackHandler {
-        AuthInitResult initAuth(String token);
+        AuthInitResult initAuth(String token, String idToken);
     }
 
     @lombok.Data
