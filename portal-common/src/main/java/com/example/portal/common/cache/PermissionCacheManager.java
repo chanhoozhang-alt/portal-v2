@@ -38,6 +38,13 @@ public class PermissionCacheManager {
                 CacheConstants.DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
     }
 
+    /** Token → userId 映射写入，TTL 与上游 accessToken 剩余有效期保持一致。 */
+    public void setToken(String token, String userId, long ttlSeconds) {
+        redisTemplate.opsForValue().set(
+                CacheConstants.TOKEN_PREFIX + token, userId,
+                ttlSeconds, TimeUnit.SECONDS);
+    }
+
     /** 根据 Token 获取 userId，未命中返回 null。 */
     public String getUserIdByToken(String token) {
         return redisTemplate.opsForValue().get(CacheConstants.TOKEN_PREFIX + token);
@@ -48,6 +55,13 @@ public class PermissionCacheManager {
         redisTemplate.opsForValue().set(
                 CacheConstants.IDENTITY_PREFIX + userId, JsonUtils.toJson(identity),
                 CacheConstants.DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /** 写入用户身份 JSON，TTL 与当前会话/token 有效期保持一致。 */
+    public void setIdentity(String userId, Object identity, long ttlSeconds) {
+        redisTemplate.opsForValue().set(
+                CacheConstants.IDENTITY_PREFIX + userId, JsonUtils.toJson(identity),
+                ttlSeconds, TimeUnit.SECONDS);
     }
 
     /** 获取用户身份 JSON，拦截器用其恢复请求上下文。 */
@@ -62,9 +76,50 @@ public class PermissionCacheManager {
                 CacheConstants.DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
     }
 
+    /** 写入用户可见应用列表 JSON，TTL 与当前会话/token 有效期保持一致。 */
+    public void setVisibleApps(String userId, Object apps, long ttlSeconds) {
+        redisTemplate.opsForValue().set(
+                CacheConstants.VISIBLE_APPS_PREFIX + userId, JsonUtils.toJson(apps),
+                ttlSeconds, TimeUnit.SECONDS);
+    }
+
     /** 获取用户可见应用列表 JSON。 */
     public String getVisibleApps(String userId) {
         return redisTemplate.opsForValue().get(CacheConstants.VISIBLE_APPS_PREFIX + userId);
+    }
+
+    /** 写入本系统登录会话，浏览器 Cookie 中只保存随机 sessionId。 */
+    public void setSession(String sessionId, Object session, long ttlSeconds) {
+        redisTemplate.opsForValue().set(
+                CacheConstants.SESSION_PREFIX + sessionId, JsonUtils.toJson(session),
+                ttlSeconds, TimeUnit.SECONDS);
+    }
+
+    /** 获取本系统登录会话 JSON。 */
+    public String getSession(String sessionId) {
+        return redisTemplate.opsForValue().get(CacheConstants.SESSION_PREFIX + sessionId);
+    }
+
+    /** 删除本系统登录会话。 */
+    public void deleteSession(String sessionId) {
+        redisTemplate.unlink(CacheConstants.SESSION_PREFIX + sessionId);
+    }
+
+    /** 写入登录 state，短 TTL，一次登录流程使用一次。 */
+    public void setAuthState(String state, Object value, long ttlSeconds) {
+        redisTemplate.opsForValue().set(
+                CacheConstants.AUTH_STATE_PREFIX + state, JsonUtils.toJson(value),
+                ttlSeconds, TimeUnit.SECONDS);
+    }
+
+    /** 读取登录 state。 */
+    public String getAuthState(String state) {
+        return redisTemplate.opsForValue().get(CacheConstants.AUTH_STATE_PREFIX + state);
+    }
+
+    /** 删除登录 state，避免重复使用。 */
+    public void deleteAuthState(String state) {
+        redisTemplate.unlink(CacheConstants.AUTH_STATE_PREFIX + state);
     }
 
     /** 清除指定用户的身份和可见应用缓存（身份变更时调用）。 */
@@ -118,5 +173,12 @@ public class PermissionCacheManager {
                 CacheConstants.DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
         redisTemplate.expire(CacheConstants.VISIBLE_APPS_PREFIX + userId,
                 CacheConstants.DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /** 按指定 TTL 续期 Token、身份和可见应用缓存，不超过上游 token 剩余有效期。 */
+    public void renewTTL(String token, String userId, long ttlSeconds) {
+        redisTemplate.expire(CacheConstants.TOKEN_PREFIX + token, ttlSeconds, TimeUnit.SECONDS);
+        redisTemplate.expire(CacheConstants.IDENTITY_PREFIX + userId, ttlSeconds, TimeUnit.SECONDS);
+        redisTemplate.expire(CacheConstants.VISIBLE_APPS_PREFIX + userId, ttlSeconds, TimeUnit.SECONDS);
     }
 }

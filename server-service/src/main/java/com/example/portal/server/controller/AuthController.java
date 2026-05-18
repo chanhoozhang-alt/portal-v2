@@ -19,7 +19,7 @@ public class AuthController {
      * Token 认证初始化：验证 Token 并返回用户身份、角色和可见应用。
      */
     @PostMapping("/internal/auth/init")
-    public Result<AuthInitResponse> init(@RequestHeader("X-Internal-Token") String token) {
+    public Result<AuthInitResponse> init(@RequestHeader("X-User-Token") String token) {
         return Result.success(authService.init(token));
     }
 }

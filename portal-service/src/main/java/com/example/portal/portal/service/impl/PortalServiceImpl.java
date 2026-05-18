@@ -2,7 +2,7 @@ package com.example.portal.portal.service.impl;
 
 import com.example.portal.common.cache.PermissionCacheManager;
 import com.example.portal.common.context.UserContext;
-import com.example.portal.common.exception.ForbiddenException;
+import com.example.portal.common.exception.UnauthorizedException;
 import com.example.portal.common.model.common.AppBrief;
 import com.example.portal.common.model.dto.portal.PortalInitResponse;
 import com.example.portal.common.model.dto.server.AuthInitResponse;
@@ -42,7 +42,7 @@ public class PortalServiceImpl implements PortalService {
     public PortalInitResponse init() {
         UserContext ctx = UserContext.get();
         if (ctx == null) {
-            throw new ForbiddenException("未认证");
+            throw new UnauthorizedException("未认证");
         }
 
         PortalInitResponse resp = buildBaseResponse(ctx);
@@ -71,7 +71,7 @@ public class PortalServiceImpl implements PortalService {
     public PortalInitResponse adminPermission() {
         UserContext ctx = UserContext.get();
         if (ctx == null) {
-            throw new ForbiddenException("未认证");
+            throw new UnauthorizedException("未认证");
         }
         return buildBaseResponse(ctx);
     }
@@ -80,13 +80,13 @@ public class PortalServiceImpl implements PortalService {
     public PortalInitResponse.AppItem jumpInfo(String appCode) {
         UserContext ctx = UserContext.get();
         if (ctx == null) {
-            throw new ForbiddenException("未认证");
+            throw new UnauthorizedException("未认证");
         }
 
         // 再次读取可见应用列表，确认用户对该 appCode 有权限（即使 init 阶段已校验过）
         String appsJson = cacheManager.getVisibleApps(ctx.getUserId());
         if (appsJson == null) {
-            throw new ForbiddenException("无权访问该应用");
+            return null;
         }
 
         List<AuthInitResponse.VisibleApp> apps = parseVisibleApps(appsJson);
@@ -106,7 +106,7 @@ public class PortalServiceImpl implements PortalService {
                     item.setVisibleType(a.getVisibleType());
                     return item;
                 })
-                .orElseThrow(() -> new ForbiddenException("无权访问该应用"));
+                .orElse(null);
     }
 
     private PortalInitResponse buildBaseResponse(UserContext ctx) {

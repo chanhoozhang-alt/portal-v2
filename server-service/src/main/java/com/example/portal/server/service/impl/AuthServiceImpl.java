@@ -124,6 +124,7 @@ public class AuthServiceImpl implements AuthService {
         identityCache.setBizAdminApps(bizAdminApps);
         cacheManager.setIdentity(userId, identityCache);
         cacheManager.setVisibleApps(userId, visibleApps);
+        cacheManager.setToken(token, userId);
 
         return resp;
     }

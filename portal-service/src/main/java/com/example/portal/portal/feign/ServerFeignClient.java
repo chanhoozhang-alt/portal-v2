@@ -13,5 +13,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface ServerFeignClient {
 
     @PostMapping("/internal/auth/init")
-    Result<AuthInitResponse> initAuth(@RequestHeader("X-Internal-Token") String token);
+    Result<AuthInitResponse> initAuth(@RequestHeader("X-Internal-Token") String internalToken,
+                                      @RequestHeader("X-User-Token") String token);
 }

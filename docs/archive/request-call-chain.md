@@ -1,4 +1,4 @@
-# Portal-v2 请求调用链
+﻿# Portal-v2 请求调用链
 
 以 portal-service 为例，说明用户请求 `GET /api/portal/init` 时的完整调用链。
 
@@ -242,11 +242,11 @@ AuthInterceptor.preHandle() 缓存未命中
   │
   ▼
 WebMvcConfig 中的 Lambda
-  │  serverFeignClient.initAuth(token)
+  │  serverFeignClient.initAuth(internalToken, token)
   │
   ▼
 ServerFeignClient（Feign 远程调用）
-  │  携带 X-Internal-Token 请求头
+  │  携带 X-Internal-Token + X-User-Token 请求头
   │
   ▼
 server-service 的 /internal/auth/init 接口
@@ -297,7 +297,7 @@ server-service 的 /internal/auth/init 接口
 
 `preHandle()` 执行流程：
 
-1. 从 `Authorization` 请求头提取 Token（支持 `Bearer xxx` 和裸 Token 两种格式）
+1. 从 `Authorization` 请求头提取 Token；如果没有 Header，则从 `PORTAL_SESSION` Cookie 读取 sessionId，再到 Redis 恢复 accessToken
 2. 查 Redis 缓存：`portal:token:{token}` → userId
    - 命中 → 继续查身份缓存
    - 未命中 → 调用 `fallbackHandler.initAuth(token)` 回源
@@ -306,6 +306,8 @@ server-service 的 /internal/auth/init 接口
    - 未命中 → 调用 `fallbackHandler.initAuth(token)` 回源
 4. 将用户信息存入 `UserContext`（ThreadLocal），供后续业务代码使用
 5. 缓存命中时调用 `cacheManager.renewTTL()` 续期
+
+当前上游 SSO 正式链路推荐使用 `PORTAL_SESSION` Cookie。`Authorization: Bearer {token}` 仍保留为兼容模式。
 
 #### 清理逻辑
 
@@ -339,18 +341,18 @@ public Result<PortalInitResponse> init() {
 
 | 服务 | 拦截路径 | 端口 | 特殊处理 |
 |------|---------|------|---------|
-| portal-service | `/api/portal/**` | 8081 | 无额外权限校验，所有已认证用户可访问 |
+| portal-service | `/api/auth/**`、`/api/portal/**` | 8081 | `/api/auth/**` 负责上游登录/callback/logout；`/api/portal/**` 需认证后访问 |
 | console-service | `/api/admin/**` | 8082 | Controller 内调用 `PermissionChecker` 做权限校验；有 `@OperationLog` 的方法会被 AOP 记录操作日志 |
-| server-service | `/api/auth/**` | 8083 | 认证服务，被其他服务通过 Feign 调用；`/internal/**` 接口受 InternalTokenFilter 保护 |
+| server-service | `/internal/**`、`/api/open/**` | 8083 | 内部认证初始化和开放接口；`/internal/**` 接口受 InternalTokenFilter 保护 |
 
 ## 关键类索引
 
 | 类 | 所属模块 | 职责 |
 |----|---------|------|
 | `InternalTokenFilter` | portal-common | 内部接口安全过滤，校验 X-Internal-Token |
-| `AuthInterceptor` | portal-common | 认证拦截，Token 验证 + UserContext 设置/清理 |
+| `AuthInterceptor` | portal-common | 认证拦截，支持 Authorization Token 和 PORTAL_SESSION Cookie，完成 UserContext 设置/清理 |
 | `WebMvcConfig` | 各服务 | 注册 AuthInterceptor，绑定拦截路径和 Token 验证策略 |
 | `UserContext` | portal-common | ThreadLocal 用户上下文，存储当前请求的用户信息 |
-| `PermissionCacheManager` | portal-common | Redis 缓存读写，管理 token/identity/visible 三个命名空间 |
+| `PermissionCacheManager` | portal-common | Redis 缓存读写，管理 token/identity/visible/session/auth-state 命名空间 |
 | `PermissionChecker` | portal-common | 权限校验静态方法（系统管理员/应用管理员/业务管理员） |
 | `GlobalExceptionHandler` | portal-common | 全局异常处理，将 BusinessException/UnauthorizedException 等转为统一 Result 响应 |

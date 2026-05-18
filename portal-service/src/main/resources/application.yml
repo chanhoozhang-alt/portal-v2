@@ -11,3 +11,17 @@ spring:
 logging:
   level:
     com.example.portal: debug
+
+portal:
+  internal-token: ${INTERNAL_TOKEN:portal-internal-secret-2026}
+  upstream-auth:
+    authorize-url: ${UPSTREAM_AUTH_AUTHORIZE_URL:https://one-account-gateway.paasuat.cmbchina.cn/auth-server/auth}
+    token-url: ${UPSTREAM_AUTH_TOKEN_URL:https://one-account-gateway.paasuat.cmbchina.cn/auth-server/token}
+    client-id: ${UPSTREAM_AUTH_CLIENT_ID:}
+    client-secret: ${UPSTREAM_AUTH_CLIENT_SECRET:}
+    redirect-uri: ${UPSTREAM_AUTH_REDIRECT_URI:http://localhost:8081/api/auth/callback}
+    scope: ${UPSTREAM_AUTH_SCOPE:default}
+    state-ttl-seconds: ${UPSTREAM_AUTH_STATE_TTL_SECONDS:600}
+    refresh-before-seconds: ${UPSTREAM_AUTH_REFRESH_BEFORE_SECONDS:600}
+    cookie-secure: ${PORTAL_COOKIE_SECURE:false}
+    default-redirect: ${PORTAL_DEFAULT_REDIRECT:/}

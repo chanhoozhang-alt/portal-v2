@@ -5,6 +5,7 @@ import com.example.portal.common.model.common.Result;
 import com.example.portal.common.model.dto.server.AuthInitResponse;
 import com.example.portal.common.security.AuthInterceptor;
 import com.example.portal.console.feign.ServerFeignClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.handler.MappedInterceptor;
@@ -32,13 +33,15 @@ public class WebMvcConfig {
      */
     @Bean
     public MappedInterceptor adminAuthInterceptor(PermissionCacheManager cacheManager,
-                                                   ServerFeignClient serverFeignClient) {
+                                                   ServerFeignClient serverFeignClient,
+                                                   @Value("${portal.internal-token:portal-internal-secret-2026}")
+                                                   String internalToken) {
         // 创建认证拦截器，构造参数 2 是 Token 验证策略（Lambda）：
         // AuthInterceptor 拿到请求中的 Token 后，不知道怎么验证，由这里告诉它具体的验证逻辑
         AuthInterceptor interceptor = new AuthInterceptor(cacheManager, token -> {
 
             // 拿着 Token 远程调用 server-service，获取该 Token 对应的用户信息
-            Result<AuthInitResponse> result = serverFeignClient.initAuth(token);
+            Result<AuthInitResponse> result = serverFeignClient.initAuth(internalToken, token);
 
             // 验证失败返回 null，AuthInterceptor 收到 null 会直接返回 401
             if (result == null || result.getCode() != 200 || result.getData() == null) {

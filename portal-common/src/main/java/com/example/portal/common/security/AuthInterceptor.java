@@ -1,9 +1,11 @@
 package com.example.portal.common.security;
 
 import com.example.portal.common.cache.PermissionCacheManager;
+import com.example.portal.common.cache.CacheConstants;
 import com.example.portal.common.context.UserContext;
 import com.example.portal.common.exception.UnauthorizedException;
 import com.example.portal.common.model.common.AppBrief;
+import com.example.portal.common.model.dto.auth.PortalSession;
 import com.example.portal.common.util.JsonUtils;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -13,6 +15,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,7 +85,32 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (header != null && header.startsWith("Bearer ")) {
             return header.substring(7);
         }
-        return header;
+        if (header != null && !header.isEmpty()) {
+            return header;
+        }
+        return extractTokenFromSession(request);
+    }
+
+    /**
+     * 从本系统 session Cookie 中恢复 accessToken。浏览器只保存随机 sessionId，
+     * 真正的上游 token 保存在 Redis，避免暴露给前端页面。
+     */
+    private String extractTokenFromSession(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (CacheConstants.SESSION_COOKIE_NAME.equals(cookie.getName())) {
+                String sessionJson = cacheManager.getSession(cookie.getValue());
+                if (sessionJson == null) {
+                    return null;
+                }
+                PortalSession session = JsonUtils.toBean(sessionJson, PortalSession.class, true);
+                return session != null ? session.getAccessToken() : null;
+            }
+        }
+        return null;
     }
 
     private void fillContext(AuthInitResult result) {

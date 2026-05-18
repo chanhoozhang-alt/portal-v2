@@ -22,3 +22,6 @@ mybatis-plus:
 logging:
   level:
     com.example.portal: debug
+
+portal:
+  internal-token: ${INTERNAL_TOKEN:portal-internal-secret-2026}
